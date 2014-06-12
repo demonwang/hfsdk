@@ -43,14 +43,6 @@ public interface IModuleManager {
 	/**
 	 * @return
 	 */
-	public void tachycardia();
-	/**
-	 * @return
-	 */
-	public void beatnormall();
-	/**
-	 * @return
-	 */
 	public ModuleHelper getHelper();
 	
 
@@ -236,5 +228,5 @@ public interface IModuleManager {
 	public OperLogInfoList getOperLogList(String moduleId, String startTime,  String endTime, int pageSize, int pageNum) throws ModuleException;
 
 	
-	public void stopbeat();
+	public void stopBeat();
 }

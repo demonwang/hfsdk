@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import android.R.array;
 import android.R.integer;
@@ -69,7 +70,6 @@ public class ModuleHelper {
 		GeneticT2 rspT2 = new GeneticT2();
 		if (cmd != null && cmd[0] == (byte) 0xFE) {
 			rspT2.unpack(cmd);
-			System.out.println(HexBin.bytesToStringWithSpace(rspT2.getParams()));
 			return getStatulist(rspT2.getParams()); // rspT2.getData());
 		} else {
 			ModuleException mex = new ModuleException("setGPIO time out");
@@ -85,33 +85,56 @@ public class ModuleHelper {
 		g.setId(gpio);
 		g.setStatus(statu);
 		gpios.put(gpio, g);
-		
-		gpios = this.setGPIO(mac, gpios);
-		Iterator<Integer> it = gpios.keySet().iterator();
-		Integer i = it.next();
-		System.out.println(i+""+gpios.get(i).getStatus());
-		boolean sat = gpios.get(gpio).getStatus();
-		return sat;
-	}
 
-	public boolean getHFGPIO(String mac, int gpioid) throws ModuleException {
-		ModuleInfo mi = new ModuleInfo();
-		mi.setMac(mac);
-		GPIO g = new GPIO();
-		g.setId(gpioid);
-		g.setStatus(false);
-		HashMap<Integer, GPIO> gpios = mi.getPinMap();
-		gpios.put(gpioid, g);
-		return this.getGPIO(mi).get(gpioid).getStatus();
+		gpios = this.setGPIO(mac, gpios);
+		g = gpios.get(gpio);
+		if(g != null)
+			return g.getStatus();
+		else
+			throw new ModuleException("time out");
 	}
 	
-	public HashMap<Integer, GPIO> getHFGPIOs(String mac ,HashMap<Integer, GPIO> gpios) throws ModuleException{
-		ModuleInfo mi = LocalModuleInfoContainer.getInstance().get(mac);
-		mi.setPinMap(gpios);
-		HashMap<Integer, GPIO> rspgpios = getGPIO(mi);
-		return rspgpios;
+	/**
+	 * can use this get GPIO status
+	 * @param length
+	 * @return
+	 */
+	public HashMap<Integer,GPIO> getGPIO(String mac,int[] gpioid)throws ModuleException{
+		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
+		ArrayList<GPIO> gpios = new ArrayList<GPIO>();
+		GeneticT2 t2 = new GeneticT2();
+		t2.setTag1((byte) 0xFD);
+		t2.setTag2((byte) 0x01);
+		t2.setLength(gpioid.length+1);
+		byte[] ids = new byte[gpioid.length];
+		for(int i = 0;i<gpioid.length;i++){
+			ids[i] = (byte) gpioid[i];
+		}
+		t2.setParams(ids);
+		
+		t2Req.put(mac, t2.pack());
+		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
+		byte[] cmd = rsp.get(mac);
+		if(cmd == null||cmd.length<5){
+			throw new ModuleException("time out");
+		}
+		t2.unpack(cmd);
+		byte[] data = t2.getParams();
+		return new CtrlData().unpack(data);
+	}
+	
+	public boolean getHFGPIO(String mac, int gpioid) throws ModuleException {
+		int[] gpios = new int[]{gpioid};
+		HashMap<Integer, GPIO> gpio  = getGPIO(mac, gpios);
+		GPIO g = gpio.get(gpioid);
+		if(g == null)
+			throw new ModuleException("time out");
+		return g.getStatus();
 	}
 
+	
+	
+	
 	public boolean deleteHFTimer(String mac, int timerNum)
 			throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
@@ -160,15 +183,18 @@ public class ModuleHelper {
 		}
 		return null;
 	}
-	public ArrayList<TimeInfo> getHFAllTimerAsArray(String mac) throws ModuleException{
+
+	public ArrayList<TimeInfo> getHFAllTimerAsArray(String mac)
+			throws ModuleException {
 		HashMap<Integer, TimeInfo> times = getHFAllTimer(mac);
 		ArrayList<TimeInfo> timelist = new ArrayList<TimeInfo>();
 		Iterator<Integer> it = times.keySet().iterator();
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			timelist.add(times.get(it.next()));
 		}
 		return timelist;
 	}
+
 	public void setHFTimer(String mac, TimeInfo time) throws ModuleException {
 		ModuleException mx = new ModuleException();
 		if (time == null) {
@@ -199,21 +225,20 @@ public class ModuleHelper {
 		}
 
 	}
-	
-	public ADCinfo getHFADCModuleValues(String mac) throws ModuleException{
+
+	public ADCinfo getHFADCModuleValues(String mac) throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		t2Req.put(mac, ADCinfo.getReqCmd());
 		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
 		byte[] cmd = rsp.get(mac);
-		if(cmd == null||cmd.length<25){
+		if (cmd == null || cmd.length < 25) {
 			throw new ModuleException("rsp err :can not recv module's rsp");
 		}
 		ADCinfo adinfo = new ADCinfo();
 		adinfo.unpack(rsp.get(mac));
 		return adinfo;
 	}
-	
-	
+
 	public void setHFTimer(String mac, int timerNo, int month, int day,
 			int hour, int min, HashMap<Integer, GPIO> GPIOs)
 			throws ModuleException {
@@ -270,49 +295,47 @@ public class ModuleHelper {
 
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		String cmd = "FD020002040" + timerNo;
-		System.out.println(cmd);
 		byte[] scmd = HexBin.stringToBytes(cmd);
 		t2Req.put(mac, scmd);
 		HashMap<String, byte[]> rsp = new HashMap<String, byte[]>();
 		try {
 			rsp = mm.moduleCommSet(t2Req);
 		} catch (ModuleException e) {
-			mx.setErrorCode(-33);// -33 ���������������������
+			mx.setErrorCode(-33);// -33 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟�
 			throw mx;
 		}
 		byte[] rspbyte = rsp.get(mac);
-		System.out.println(HexBin.bytesToString(rspbyte));
 		if (rspbyte == null) {
 			mx.setErrorCode(ModuleException.ERROR_CODE_RECV_CMD_NULL_ERR);
 			throw mx;
 		}
 		if (rspbyte.length < 10) {
-			mx.setErrorCode(ModuleException.ERROR_CODE_RECV_CMD_DECODE_ERR); // -30 ���������������������������������������������������������������
+			mx.setErrorCode(ModuleException.ERROR_CODE_RECV_CMD_DECODE_ERR); // -30
+																				// 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟�
 			throw mx;
 		}
 
 		TimeInfo t = new TimeInfo();
 		byte[] timebyte = Arrays.copyOfRange(rspbyte, 5, rspbyte.length);
-		System.out.println(HexBin.bytesToString(timebyte));
 
 		if (timerNo == timebyte[0]) {
 			if ((timebyte[1] & 0x0f) == 0x01) {
-				System.out.println("singal");
 				t = t.unpackDaySingleTime(timebyte);
 
 			} else {
-				System.out.println("Week");
 				t = t.unpackWeekSingleTime(timebyte);
 			}
 		} else {
-			mx.setErrorCode(-30); // -30 ������������������������������������������������������
+			mx.setErrorCode(-30); // -30
+									// 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
 			throw mx;
 		}
 		return t;
 	}
-	
-	//------------------------------for eachone---
-	public ArrayList<TimerEachOne> getAllEachOneTimer(String mac) throws ModuleException{
+
+	// ------------------------------for eachone---
+	public ArrayList<TimerEachOne> getAllEachOneTimer(String mac)
+			throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		GeneticT2 t2 = new GeneticT2();
 		t2.setTag1(GeneticT2.TAG1_GET);
@@ -321,24 +344,23 @@ public class ModuleHelper {
 		t2Req.put(mac, t2.pack());
 		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
 		byte[] cmd = rsp.get(mac);
-		if(cmd == null||cmd.length<=0){
+		if (cmd == null || cmd.length <= 0) {
 			throw new ModuleException();
 		}
-		
+
 		TimerEachOne teo = new TimerEachOne();
-		System.out.println(HexBin.bytesToStringWithSpace(cmd));
-		
+
 		return teo.unpackAll(Arrays.copyOfRange(cmd, 5, cmd.length));
 	}
-	
-	public void setTimer(String mac,TimerEachOne t) throws ModuleException{
+
+	public void setTimer(String mac, TimerEachOne t) throws ModuleException {
 		ModuleException mx = new ModuleException();
 		if (t == null) {
 			mx.setErrorCode(ModuleException.ERROR_CODE_PARAMETERS_OF_INPUT_ERROR);
 			throw mx;
 		}
 		byte[] tim = t.pack();
-		if(tim == null){
+		if (tim == null) {
 			mx.setErrorCode(ModuleException.ERROR_CODE_PARAMETERS_OF_INPUT_ERROR);
 			throw mx;
 		}
@@ -347,61 +369,45 @@ public class ModuleHelper {
 		Log.i("setTimer", HexBin.bytesToStringWithSpace(tim));
 		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
 		byte[] cmd = rsp.get(mac);
-		if(cmd == null||cmd.length<=0){
+		if (cmd == null || cmd.length <= 0) {
 			throw new ModuleException();
 		}
-		
-		if(cmd.length>5||cmd[5]==tim[0]){
+
+		if (cmd.length > 5 || cmd[5] == tim[0]) {
 			Log.i("setTimer", "OK");
-		}else{
+		} else {
 			throw new ModuleException();
 		}
 	}
-	
-	public TimerEachOne getTimer(String mac,int timeNo){
+
+	public TimerEachOne getTimer(String mac, int timeNo) {
 		return new TimerEachOne();
 	}
-	//-------------------------------------------
 
-	public byte[] setModulePSWD(String mac) throws ModuleException {
-		
-		ModuleException mx = new ModuleException();
-		ModuleInfo mi = LocalModuleInfoContainer.getInstance().get(mac);
-		T1Message send = new T1Message();
-		Head1 h1 = new Head1();
-		h1.setId(T1Message.ID_LOCAL_ADD_MODULE);
-		h1.setFlag((byte) 0x41);
-		h1.setMac(mac);
-		Head2 h2 = new Head2();
-		h2.setVersion(0x1);
-		h2.setReserved(0);
-		h2.setComponyCode(mi.getFactoryId());
-		h2.setModuleCode(mi.getType());
-
-		send.setHead1(h1);
-		send.setHead2(h2);
-		ByteBuffer key = ByteBuffer.allocate(17);
-		key.put((byte) 0x10);
-		key.put(ModuleConfig.localModulePswd.getBytes());
-		send.setPayload(key.array());
-
-		send.setKey(AES.DEFAULT_KEY_128.getBytes());
-		byte[] cmd;
-		try {
-			cmd = send.pack();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			mx.setErrorCode(-36); // cmd pack err
-			throw mx;
+	// -------------------------------------------
+	/*
+	 * use to Build AES key for Module
+	 */
+	public static String getRandomString(int length) { // length 字符串长度
+		StringBuffer buffer = new StringBuffer(
+				"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()_+<>?/.,:");
+		StringBuffer sb = new StringBuffer();
+		Random r = new Random();
+		int range = buffer.length();
+		for (int i = 0; i < length; i++) {
+			sb.append(buffer.charAt(r.nextInt(range)));
 		}
-		System.out.println(mac + "������������������������---------->OK");
-		return UdpProxy.getInstance().send(cmd, mi.getLocalIp(),
-				AES.DEFAULT_KEY_128.getBytes());
-
+		return sb.toString();
 	}
 	
-public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
-		
+	public int getsn(){
+		int num = (int)(Math.random()*65535); // 获取0～100之间的整数
+		return num;
+	}
+	
+	public byte[] setModulePSWD(ModuleInfo mi, String pswd)
+			throws ModuleException {
+
 		ModuleException mx = new ModuleException();
 		T1Message send = new T1Message();
 		Head1 h1 = new Head1();
@@ -411,6 +417,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		Head2 h2 = new Head2();
 		h2.setVersion(0x1);
 		h2.setReserved(0);
+		h2.setSn(getsn());
 		h2.setComponyCode(mi.getFactoryId());
 		h2.setModuleCode(mi.getType());
 
@@ -418,7 +425,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		send.setHead2(h2);
 		ByteBuffer key = ByteBuffer.allocate(17);
 		key.put((byte) 0x10);
-		key.put(ModuleConfig.localModulePswd.getBytes());
+		key.put(pswd.getBytes());
 		send.setPayload(key.array());
 
 		send.setKey(AES.DEFAULT_KEY_128.getBytes());
@@ -430,7 +437,6 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 			mx.setErrorCode(-36); // cmd pack err
 			throw mx;
 		}
-		System.out.println(mi.getMac() + "������������������������---------->OK");
 		return UdpProxy.getInstance().send(cmd, mi.getLocalIp(),
 				AES.DEFAULT_KEY_128.getBytes());
 
@@ -438,10 +444,9 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 
 	public byte[] setServAdd(String mac, String servadd, int port)
 			throws ModuleException {
-		
+
 		ModuleException mx = new ModuleException();
 		ModuleInfo mi = LocalModuleInfoContainer.getInstance().get(mac);
-		System.out.println(mi.toString());
 		T1Message send = new T1Message();
 		Head1 h1 = new Head1();
 		Head2 h2 = new Head2();
@@ -450,7 +455,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		h1.setMac(mac);
 		h2.setVersion(1);
 		h2.setReserved(0);
-		h2.setSn(0);
+		h2.setSn(getsn());
 		h2.setComponyCode(ModuleConfig.factoryId);
 		h2.setModuleCode(mi.getFactoryId());
 		send.setHead1(h1);
@@ -487,15 +492,14 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 			mx.setErrorCode(-36);
 			throw mx;
 		}
-		System.out.println(mac + "���������������������������������������������������----------->OK");
 		return UdpProxy.getInstance().send(cmd, mi.getLocalIp(),
 				mi.getLocalKey().getBytes());
 	}
+
 	public byte[] setServAdd(ModuleInfo mi, String servadd, int port)
 			throws ModuleException {
 		String mac = mi.getMac();
 		ModuleException mx = new ModuleException();
-		System.out.println(mi.toString());
 		T1Message send = new T1Message();
 		Head1 h1 = new Head1();
 		Head2 h2 = new Head2();
@@ -541,13 +545,12 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 			mx.setErrorCode(-36);
 			throw mx;
 		}
-		System.out.println(mac + "���������������������������������������������������----------->OK");
 		return UdpProxy.getInstance().send(cmd, mi.getLocalIp(),
 				mi.getLocalKey().getBytes());
 	}
 
 	public void setPWM(ModuleInfo mInfo, PWM[] PWMs) throws ModuleException {
-
+		
 	}
 
 	/**
@@ -555,7 +558,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 	 * @return
 	 * @throws ModuleException
 	 */
-	public HashMap<Integer, GPIO> getGPIO(ModuleInfo mInfo)
+	/*public HashMap<Integer, GPIO> getGPIO(ModuleInfo mInfo)
 			throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		GPIO tmg = new GPIO();
@@ -583,19 +586,17 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
 		byte[] cmd = rsp.get(mInfo.getMac());
 		GeneticT2 rspT2 = new GeneticT2();
-		if(cmd==null){
+		if (cmd == null) {
 			throw new ModuleException(31);
 		}
 		rspT2.unpack(cmd);
 		if (rspT2.getTag1() == (byte) 0xFD && rspT2.getLength() > 0) {
 			return getStatulist(rspT2.getParams()); // rspT2.getData());
-		}
-		else
-		{
+		} else {
 			throw new ModuleException(32);
 		}
-	}
-
+	}*/
+	
 	public HashMap<String, HashMap<Integer, GPIO>> getAllModuleStatus(
 			ArrayList<ModuleInfo> mis) throws Exception {
 
@@ -619,8 +620,9 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		return null;
 	}
 
-	public ModuleInfo getAllTimer(ModuleInfo mi) {
+	public HashMap<Integer, TimeInfo> getAllTimer(ModuleInfo mi) throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
+		HashMap<Integer, TimeInfo> tmap = new HashMap<Integer, TimeInfo>();
 		GeneticT2 t2 = new GeneticT2();
 		t2.setTag1(GeneticT2.TAG1_GET);
 		t2.setTag2((byte) 0x02);
@@ -635,12 +637,13 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 				byte[] data = rspT2.getParams();
 
 				Timerdata td = new Timerdata();
-				mi.setTimeMap(td.unpack(data));
+				tmap =  td.unpack(data);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw new ModuleException();
 		}
-		return mi;
+		return tmap;
 	}
 
 	public void setTimer(ModuleInfo mi, TimeInfo time) throws ModuleException {
@@ -670,7 +673,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 
 	public void deleteTimer(int timerNum, ModuleInfo mi) throws ModuleException {
 		// TODO Auto-generated method stub FE 02 00 02 06 NN
-		ModuleException mx =  new ModuleException();
+		ModuleException mx = new ModuleException();
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		GeneticT2 t2 = new GeneticT2();
 		t2.setTag1(T2.TAG1_SET);
@@ -687,7 +690,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		t2.unpack(rspbyte);
 		byte[] pa = t2.getParams();
 		if (pa[0] == timerNum && pa[1] == 0x01) {
-			mi.getTimeMap().remove(timerNum);
+			return ;
 		} else {
 			mx.setErrorCode(-32);
 			throw mx;
@@ -719,6 +722,8 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		this.setTimer(mInfo, time);
 	}
 
+	
+	
 	public void setTimer(ModuleInfo mInfo, int timerNo, int month, int day,
 			int hour, int min, PWM[] PWMs) throws ModuleException {
 
@@ -726,6 +731,7 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 
 	public void setTimer(ModuleInfo mInfo, int timerNo, int month, int day,
 			int hour, int min, ByteBuffer bf) throws ModuleException {
+	
 	}
 
 	public void setTimer(ModuleInfo mInfo, int timerNo, DaysOfWeek dow,
@@ -752,23 +758,24 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		this.setTimer(mInfo, time);
 	}
 
+	
+	
 	public void setTimer(ModuleInfo mInfo, int timerNo, DaysOfWeek dow,
 			int hour, int min, boolean isLoop, PWM[] PWMs)
 			throws ModuleException {
 	}
-	
-	
-	public byte[] sendDataToUart(String mac,byte[] data,boolean chanle)throws ModuleException {
+
+	public byte[] sendDataToUart(String mac, byte[] data, boolean chanle)
+			throws ModuleException {
 		HashMap<String, byte[]> t2Req = new HashMap<String, byte[]>();
 		T2 t2 = new T2();
-		if(chanle)
+		if (chanle)
 			t2.setTag2((byte) 0x04);
 		else
 			t2.setTag2((byte) 0x84);
-			t2.setTag1(T2.TAG1_GET);
-			t2.setData(data);
-			t2Req.put(mac, t2.pack());
-		System.out.println(HexBin.bytesToStringWithSpace(t2.pack()));
+		t2.setTag1(T2.TAG1_GET);
+		t2.setData(data);
+		t2Req.put(mac, t2.pack());
 		HashMap<String, byte[]> rsp = mm.moduleCommSet(t2Req);
 		return rsp.get(mac);
 	}
@@ -776,13 +783,15 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 	public void setTimer(ModuleInfo mInfo, int timerNo, DaysOfWeek dow,
 			int hour, int min, boolean isLoop, ByteBuffer bf)
 			throws ModuleException {
+		
+		
 	}
 
 	public static HashMap<Integer, GPIO> getStatulist(byte[] T2data) {
 		HashMap<Integer, GPIO> GPIOStatusMap = new HashMap<Integer, GPIO>();
 		for (int i = 0; i < T2data.length; i += 4) {
 			GPIO gpio = new GPIO();
-			gpio.setId((T2data[i]&0xFF) >> 4);
+			gpio.setId((T2data[i] & 0xFF) >> 4);
 			gpio.setStatus((T2data[i + 1] & 0x01) == 0);
 			GPIOStatusMap.put(gpio.getId(), gpio);
 		}
@@ -819,9 +828,11 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 			while (it.hasNext()) {
 				GPIO g = it.next().getValue();
 				if (!g.getStatus()) {
-					data.put(HexBin.stringToBytes(Integer.toHexString(g.getId())+ "002FFFF"));
+					data.put(HexBin.stringToBytes(Integer.toHexString(g.getId())
+							+ "002FFFF"));
 				} else {
-					data.put(HexBin.stringToBytes(Integer.toHexString(g.getId()) + "001FFFF"));
+					data.put(HexBin.stringToBytes(Integer.toHexString(g.getId())
+							+ "001FFFF"));
 				}
 			}
 			return data.array();
@@ -866,14 +877,14 @@ public byte[] setModulePSWD(ModuleInfo mi) throws ModuleException {
 		ModuleInfo mi = LocalModuleInfoContainer.getInstance().get(mac);
 		return mi.getOnline() || (mi.getLocalIp() != null);
 	}
-	
-	public int getOnLineMudleNum() throws ModuleException{
+
+	public int getOnLineMudleNum() throws ModuleException {
 		ArrayList<ModuleInfo> ml = mm.getAllModules();
 		int i = 0;
 		Iterator<ModuleInfo> it = ml.iterator();
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			ModuleInfo tmp = it.next();
-			if(getStatusByMac(tmp.getMac())){
+			if (getStatusByMac(tmp.getMac())) {
 				i++;
 			}
 		}

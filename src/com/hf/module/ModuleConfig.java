@@ -11,10 +11,6 @@ public class ModuleConfig{
 	/**
 	 * 
 	 */
-	final public static String localModulePswd = "1234567890123456";
-	/**
-	 * 
-	 */
 	public static final int SmartLinkPort = 49999;
 	/**
 	 * 

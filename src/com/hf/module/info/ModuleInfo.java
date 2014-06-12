@@ -2,6 +2,7 @@ package com.hf.module.info;
 
 import java.util.HashMap;
 
+import com.hf.lib.util.AES;
 import com.hf.module.ModuleConfig;
 
 
@@ -12,9 +13,6 @@ public class ModuleInfo implements java.io.Serializable{
     //local
     private String localIp = null;
     private long lastTimestamp = 0;
-    private HashMap<Integer, GPIO> PinMap = new HashMap<Integer, GPIO>(); // key= pin number, value=pin
-    
-    private HashMap<Integer, TimeInfo> TimeMap = new HashMap<Integer, TimeInfo>();
     //cloud
     private String id = null;
     private String accessKey = null;
@@ -82,14 +80,6 @@ public class ModuleInfo implements java.io.Serializable{
         sb.append("]");
         return sb.toString();
     }
-
-    public HashMap<Integer, TimeInfo> getTimeMap() {
-		return TimeMap;
-	}
-    
-    public void setTimeMap(HashMap<Integer, TimeInfo> timeMap) {
-		TimeMap = timeMap;
-	}
     
     public long getLastTimestamp() {
 		return lastTimestamp;
@@ -99,18 +89,6 @@ public class ModuleInfo implements java.io.Serializable{
 	public void setLastTimestamp(long lastTimestamp) {
 		this.lastTimestamp = lastTimestamp;
 	}
-
-
-	public HashMap<Integer, GPIO> getPinMap() {
-		return PinMap;
-	}
-
-
-	public void setPinMap(HashMap<Integer, GPIO> PinMap) {
-		if(PinMap != null)
-			this.PinMap = PinMap;
-	}
-
 
 	public String getLocalIp() {
 		return localIp;
@@ -163,7 +141,7 @@ public class ModuleInfo implements java.io.Serializable{
 
     public String getLocalKey() {
     	if(localKey==null)
-    		localKey = ModuleConfig.localModulePswd;
+    		localKey = AES.DEFAULT_KEY_128;
     	return localKey;
     }
 
@@ -192,6 +170,8 @@ public class ModuleInfo implements java.io.Serializable{
     }
 
     public void setFactoryId(Integer factoryId) {
+    	if(factoryId == null)
+    		factoryId = 0;
         this.factoryId = factoryId;
     }
 

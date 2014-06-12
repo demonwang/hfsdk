@@ -337,9 +337,15 @@ public class ModuleManagerImpl implements IModuleManager {
 							msg.setKey(AES.DEFAULT_KEY_128.getBytes());
 							msg.unpack(l1bytes);
 						}
+						String ip = recvPacket.getAddress().getHostAddress();
+						
+						//Exclude the situation does not get hit IP
+						if(ip.contains(":")||ip.contains("0.0.0.0"))
+							return ;
+						
 						mi.setMac(mac);
-						mi.setLocalIp(recvPacket.getAddress().getHostAddress());
-						mi.setLastTimestamp(new java.util.Date().getTime());
+						mi.setLocalIp(ip);
+						mi.setLastTimestamp(new java.util.Date().getTime());				
 						mi.setFactoryId(msg.getHead2().getComponyCode());
 						mi.setType(msg.getHead2().getModuleCode());
 						
@@ -387,25 +393,6 @@ public class ModuleManagerImpl implements IModuleManager {
 				}
 			}
 		}
-	}
-
-	/*
-	 * when add or find new Dev use This will be better
-	 */
-	@Override
-	public void tachycardia() {
-		tachycardia = new Timer();
-		assistbeattsk = new Beattask(discovery);
-		tachycardia.schedule(assistbeattsk, 0, 1000);
-	}
-
-	/*
-	 * when stop add or find new Dev make beat normall
-	 */
-	@Override
-	public void beatnormall() {
-		assistbeattsk.cancel();
-		tachycardia.cancel();
 	}
 
 	public boolean isCloudChannelLive() {
@@ -958,7 +945,6 @@ public class ModuleManagerImpl implements IModuleManager {
 				LocalModuleInfoContainer.getInstance().removeAll();
 				for (int i = 0; i < ja.size(); i++) {
 					JsonObject row = ja.get(i).getAsJsonObject();
-					// System.out.println(row);
 					ModuleInfo info = new ModuleInfo();
 					json2ModuleInfo(row, info);
 					result.add(info);
@@ -1090,7 +1076,6 @@ public class ModuleManagerImpl implements IModuleManager {
 
 		String rsp = HttpProxy.getInstance().callHttpsPost(req,
 				ModuleConfig.cloudHomeServiceUrl);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 		int rc = jo.get("RC").getAsInt();
 		if (rc == RESPONSE_SUCCEED) {
@@ -1288,9 +1273,7 @@ public class ModuleManagerImpl implements IModuleManager {
 			pl.addProperty("idNumber", info.getIdNumber());
 
 		String req = joReq.toString();
-		System.out.println(req);
 		String rsp = HttpProxy.getInstance().callHttpsPost(req);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 		int rs = jo.get("RC").getAsInt();
 
@@ -1466,9 +1449,7 @@ public class ModuleManagerImpl implements IModuleManager {
 			pl.addProperty("sms", receiverAddress);
 		}
 		String req = joReq.toString();
-		System.out.println(req);
 		String rsp = HttpProxy.getInstance().callHttpsPost(req);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 
 		int rs = jo.get("RC").getAsInt();
@@ -1515,9 +1496,7 @@ public class ModuleManagerImpl implements IModuleManager {
 		pl.addProperty("key", key);
 
 		String req = joReq.toString();
-		System.out.println(req);
 		String rsp = HttpProxy.getInstance().callHttpsPost(req);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 		
 		int rs = jo.get("RC").getAsInt();
@@ -1659,9 +1638,7 @@ public class ModuleManagerImpl implements IModuleManager {
 		pl.addProperty("pageNum", pageNum);
 
 		String req = joReq.toString();
-		System.out.println(req);
 		String rsp = HttpProxy.getInstance().callHttpsPost(req);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 
 		int rs = jo.get("RC").getAsInt();
@@ -1745,9 +1722,7 @@ public class ModuleManagerImpl implements IModuleManager {
 		pl.addProperty("pageNum", pageNum);
 
 		String req = joReq.toString();
-		System.out.println(req);
 		String rsp = HttpProxy.getInstance().callHttpsPost(req);
-		System.out.println(rsp);
 		JsonObject jo = new JsonParser().parse(rsp).getAsJsonObject();
 
 		int rs = jo.get("RC").getAsInt();
@@ -1818,7 +1793,7 @@ public class ModuleManagerImpl implements IModuleManager {
 	}
 
 	@Override
-	public void stopbeat() {
+	public void stopBeat() {
 		// TODO Auto-generated method stub
 		beattsk.cancel();
 		timer.cancel();
@@ -1857,6 +1832,7 @@ public class ModuleManagerImpl implements IModuleManager {
 		}
 	}
 
+	
 	@Override
 	public void connectModuleToWIFI2(String RouterSSID, String RouterPSWD) {
 		// TODO Auto-generated method stub
